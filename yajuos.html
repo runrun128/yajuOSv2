@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>yajuOS - ジョークOS</title>
+<style>
+  /* ベース */
+  body, html {
+    margin: 0; padding: 0; height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      linear-gradient(135deg, #2e3a59, #1b253a);
+    background-image:
+      url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    color: #eee;
+    user-select: none;
+    overflow: hidden;
+    transition: background-color 0.5s ease;
+  }
+  #bootScreen, #logoScreen, #homeScreen {
+    position: absolute;
+    width: 100%; height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background: #111;
+  }
+  #bootScreen {
+    background: #000;
+    color: #ff7f50;
+    font-weight: bold;
+    font-size: 20px;
+  }
+  #bootProgress {
+    margin-top: 20px;
+    width: 300px;
+    height: 20px;
+    background: #333;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #bootProgressBar {
+    height: 100%;
+    width: 0%;
+    background: #ff7f50;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+  }
+  #logoScreen {
+    background: #111;
+    color: #ff7f50;
+    font-size: 48px;
+    font-weight: 900;
+    opacity: 0;
+    animation: fadeInOut 3s forwards;
+    letter-spacing: 0.15em;
+  }
+  @keyframes fadeInOut {
+    0% {opacity: 0;}
+    50% {opacity: 1;}
+    100% {opacity: 0;}
+  }
+
+  #homeScreen {
+    background: linear-gradient(135deg, rgba(46,58,89,0.8), rgba(27,37,58,0.8));
+    display: none;
+    flex-direction: column;
+  }
+  /* Dock風 */
+  #dock {
+    background: rgba(30,30,30,0.8);
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 0 30px;
+    box-shadow: 0 -4px 20px rgba(255,127,80,0.7);
+    border-radius: 20px 20px 0 0;
+  }
+  .appIcon {
+    width: 54px;
+    height: 54px;
+    background: radial-gradient(circle at 30% 30%, #ff7f50, #cc5522);
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 900;
+    color: #fff8e1;
+    user-select: none;
+    box-shadow: 0 2px 8px #ff7f50cc;
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    font-size: 28px;
+    text-shadow: 0 0 5px #ffb07a;
+  }
+  .appIcon:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 18px 4px #ff7f50ff;
+  }
+  /* ウィンドウ共通 */
+  .window {
+    position: absolute;
+    top: 80px;
+    left: 80px;
+    width: 400px;
+    background: rgba(34,34,34,0.95);
+    border: 2px solid #ff7f50;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px #ff7f50cc;
+    display: flex;
+    flex-direction: column;
+    user-select: text;
+    backdrop-filter: blur(10px);
+  }
+  .window-header {
+    background: linear-gradient(135deg, #ff7f50, #cc5522);
+    color: #111;
+    padding: 10px 16px;
+    font-weight: 900;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    user-select: none;
+    box-shadow: inset 0 -3px 5px rgba(255, 255, 255, 0.2);
+  }
+  .window-header button {
+    background: none;
+    border: none;
+    font-weight: 900;
+    font-size: 20px;
+    color: #111;
+    cursor: pointer;
+    user-select: none;
+    filter: drop-shadow(0 0 2px #fff);
+  }
+  .window-content {
+    padding: 18px;
+    color: #eee;
+    flex-grow: 1;
+    overflow-y: auto;
+  }
+  /* メモ用テキストエリア */
+  textarea {
+    width: 100%;
+    height: 200px;
+    background: #222;
+    color: #fff8e1;
+    border: none;
+    resize: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 14px;
+    box-shadow: inset 0 0 10px #ff7f50aa;
+  }
+  /* ゲームのボタン */
+  #gameBtn {
+    padding: 14px 30px;
+    background: radial-gradient(circle at center, #ff7f50, #cc5522);
+    color: #111;
+    border: none;
+    border-radius: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    user-select: none;
+    font-size: 18px;
+    box-shadow: 0 0 12px #ff7f50cc;
+    transition: box-shadow 0.3s ease;
+  }
+  #gameBtn:hover {
+    box-shadow: 0 0 24px 4px #ff9f70ff;
+  }
+  #gameCount {
+    margin-top: 14px;
+    font-size: 20px;
+    font-weight: 900;
+    text-align: center;
+    text-shadow: 0 0 8px #ff7f50;
+  }
+  /* 野獣画像 */
+  #yajuImage {
+    display: block;
+    margin: 12px auto 0;
+    max-width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 0 20px #ff7f50cc;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease;
+  }
+  /* カオス画面用 */
+  #chaosOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #ff2200dd;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 9999;
+    user-select: none;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  #chaosOverlay.show {
+    opacity: 1;
+    pointer-events: auto;
+    animation: shake 0.4s infinite alternate;
+  }
+  #chaosOverlay img {
+    max-width: 80vw;
+    max-height: 80vh;
+    border-radius: 24px;
+    box-shadow: 0 0 40px #ff4400cc;
+  }
+  @keyframes shake {
+    0% { transform: translate(0,0) rotate(0deg); }
+    50% { transform: translate(8px, -6px) rotate(-4deg); }
+    100% { transform: translate(-8px, 6px) rotate(4deg); }
+  }
+  /* メッセージ流し表示 */
+  #messageStream {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: #ff7f5080;
+    color: #111;
+    font-weight: 900;
+    font-size: 22px;
+    padding: 16px 28px;
+    border-radius: 24px;
+    box-shadow: 0 0 20px #ff7f50cc;
+    user-select: none;
+    pointer-events: none;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    max-width: 90vw;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- 起動画面 -->
+<div id="bootScreen">
+  <div>yajuOSを起動中...</div>
+  <div id="bootProgress">
+    <div id="bootProgressBar"></div>
+  </div>
+</div>
+
+<!-- ロゴ画面 -->
+<div id="logoScreen">yajuOS</div>
+
+<!-- ホーム画面 -->
+<div id="homeScreen">
+  <div style="flex-grow:1;"></div>
+  <div id="dock">
+    <div class="appIcon" data-app="game" title="野獣ゲーム">🐾</div>
+    <div class="appIcon" data-app="memo" title="野獣メモ">📝</div>
+    <div class="appIcon" data-app="uninstaller" title="野獣OSアンインストーラ">🗑️</div>
+    <div class="appIcon" data-app="virus" title="野獣ウイルス">💀</div>
+  </div>
+</div>
+
+<!-- カオス画面オーバーレイ -->
+<div id="chaosOverlay">
+  <img src="https://assets.st-note.com/production/uploads/images/179812756/picture_pc_6f0e143c1bcaee32b49a4fe45524c3a9.png" alt="野獣ウイルス" />
+</div>
+
+<!-- メッセージ流し表示 -->
+<div id="messageStream"></div>
+
+<script>
+  // 起動画面プログレスバー
+  const bootProgressBar = document.getElementById('bootProgressBar');
+  const bootScreen = document.getElementById('bootScreen');
+  const logoScreen = document.getElementById('logoScreen');
+  const homeScreen = document.getElementById('homeScreen');
+
+  function startBoot() {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5 + Math.random() * 10;
+      if (progress >= 100) progress = 100;
+      bootProgressBar.style.width = progress + '%';
+      if (progress >= 100) {
+        clearInterval(interval);
+        playBootSound();
+        bootScreen.style.display = 'none';
+        showLogo();
+      }
+    }, 150);
+  }
+
+  function playBootSound() {
+    try {
+      const ctx = new AudioContext();
+      const o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(440, ctx.currentTime);
+      o.connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+  }
+
+  function showLogo() {
+    logoScreen.style.display = 'flex';
+    logoScreen.style.animation = 'fadeInOut 3s forwards';
+    setTimeout(() => {
+      logoScreen.style.display = 'none';
+      showHome();
+    }, 3000);
+  }
+
+  function showHome() {
+    homeScreen.style.display = 'flex';
+  }
+
+  startBoot();
+
+  // ドラッグ可能化
+  function makeDraggable(element, header) {
+    let posX = 0, posY = 0, mouseX = 0, mouseY = 0;
+    header.onmousedown = dragMouseDown;
+    function dragMouseDown(e) {
+      e.preventDefault();
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      document.onmouseup = closeDragElement;
+      document.onmousemove = elementDrag;
+    }
+    function elementDrag(e) {
+      e.preventDefault();
+      posX = mouseX - e.clientX;
+      posY = mouseY - e.clientY;
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      element.style.top = (element.offsetTop - posY) + "px";
+      element.style.left = (element.offsetLeft - posX) + "px";
+    }
+    function closeDragElement() {
+      document.onmouseup = null;
+      document.onmousemove = null;
+    }
+  }
+
+  // アプリ起動
+  const dock = document.getElementById('dock');
+  dock.addEventListener('click', e => {
+    if (!e.target.classList.contains('appIcon')) return;
+    const appName = e.target.dataset.app;
+    if (appName === 'virus') {
+      startVirusSequence();
+    } else {
+      openApp(appName);
+    }
+  });
+
+  let zIndexCounter = 100;
+
+  function openApp(app) {
+    if(document.getElementById('window_' + app)) {
+      const win = document.getElementById('window_' + app);
+      win.style.zIndex = ++zIndexCounter;
+      return;
+    }
+
+    let win = document.createElement('div');
+    win.className = 'window';
+    win.id = 'window_' + app;
+    win.style.zIndex = ++zIndexCounter;
+
+    let header = document.createElement('div');
+    header.className = 'window-header';
+    header.textContent = {
+      'game': '野獣ゲーム',
+      'memo': '野獣メモ',
+      'uninstaller': '野獣OSアンインストーラ',
+      'virus': '野獣ウイルス警告'
+    }[app] || 'yajuOS App';
+
+    let closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.onclick = () => {
+      win.remove();
+    };
+    header.appendChild(closeBtn);
+    win.appendChild(header);
+
+    makeDraggable(win, header);
+
+    let content = document.createElement('div');
+    content.className = 'window-content';
+
+    if (app === 'game') {
+      let img = document.createElement('img');
+      img.id = 'yajuImage';
+      img.src = 'https://assets.st-note.com/production/uploads/images/179812756/picture_pc_6f0e143c1bcaee32b49a4fe45524c3a9.png';
+      img.alt = '野獣の画像';
+      img.title = 'クリックして野獣力アップ！';
+      let count = 0;
+
+      let counterDisplay = document.createElement('div');
+      counterDisplay.id = 'gameCount';
+      counterDisplay.textContent = '野獣力: 0';
+
+      img.style.userSelect = 'none';
+
+      img.onclick = () => {
+        count++;
+        counterDisplay.textContent = `野獣力: ${count}`;
+        img.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+          img.style.transform = 'scale(1)';
+        }, 150);
+      };
+
+      content.appendChild(img);
+      content.appendChild(counterDisplay);
+    }
+    else if (app === 'memo') {
+      let textarea = document.createElement('textarea');
+      textarea.placeholder = '野獣メモに書き込もう！保存はないよ。';
+      content.appendChild(textarea);
+    }
+    else if (app === 'uninstaller') {
+      let p = document.createElement('p');
+      p.textContent = '本当に野獣OSをアンインストールしますか？';
+      let btnYes = document.createElement('button');
+      btnYes.textContent = 'はい';
+      btnYes.style.marginTop = '10px';
+      btnYes.style.padding = '10px 20px';
+      btnYes.style.background = 'radial-gradient(circle at center, #ff7f50, #cc5522)';
+      btnYes.style.color = '#111';
+      btnYes.style.border = 'none';
+      btnYes.style.borderRadius = '14px';
+      btnYes.style.fontWeight = '900';
+      btnYes.style.cursor = 'pointer';
+      btnYes.onclick = () => {
+        alert('アンインストールしました！…嘘です。野獣OSは不滅です！');
+      };
+      content.appendChild(p);
+      content.appendChild(btnYes);
+    }
+    else {
+      content.textContent = '未実装のアプリです。';
+    }
+
+    win.appendChild(content);
+    document.body.appendChild(win);
+  }
+
+  // 野獣ウイルス処理
+  const chaosOverlay = document.getElementById('chaosOverlay');
+  const messageStream = document.getElementById('messageStream');
+  const virusMessages = [
+    "本当に追加しますか？",
+    "本当にいいんですね？",
+    "わかりました本当にしますよ？",
+    "もう後戻りできませんよ？",
+    "いいんですね？",
+    "わかりました..."
+  ];
+
+  function playYajuSound() {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      // 1秒くらいでフェードアウトしながら停止
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1);
+      osc.stop(ctx.currentTime + 1.1);
+    } catch(e) {}
+  }
+
+  async function startVirusSequence() {
+    // メッセージを順番に流す
+    messageStream.style.opacity = 1;
+    for(let msg of virusMessages){
+      messageStream.textContent = msg;
+      await new Promise(r => setTimeout(r, 1800));
+    }
+    messageStream.style.opacity = 0;
+
+    // カオス画面表示
+    chaosOverlay.classList.add('show');
+    playYajuSound();
+
+    // 15秒後にカオス解除
+    setTimeout(() => {
+      chaosOverlay.classList.remove('show');
+    }, 15000);
+  }
+</script>
+
+</body>
+</html>
